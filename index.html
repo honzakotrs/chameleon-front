@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Centrala</title>
+
+    <style>
+        body {
+            font-family: Consolas, Monaco, Lucida Console, monospace;
+            font-size: 0.9em;
+        }
+
+        #moves, #sms {
+            width: 40%;
+            display: inline-block;
+            vertical-align: top;
+
+        }
+    </style>
+
+    <script src="js/jquery-2.1.3.min.js"></script>
+    <script type="application/javascript">
+
+        $(function () {
+
+            var $console = $("#console");
+            var $moves = $("#moves");
+            var $sms = $("#sms");
+            var $refreshButton = $("#refresh");
+            var $preformattedChameleons = $("#preformattedChameleons");
+            var $preformattedPlayers = $("#preformattedPlayers");
+
+            $refreshButton.click(function () {
+                renderMoves();
+                renderSms();
+            });
+
+            var teams = null;
+            $.getJSON("/chameleon/back/api.php?endpoint=team", function (data) {
+                teams = data;
+            });
+
+            function renderMoves(role) {
+                $.getJSON("/chameleon/back/api.php?endpoint=move", function (data) {
+                    var moves = data;
+                    $moves.empty();
+                    $preformattedChameleons.text("");
+                    $preformattedPlayers.text("");
+                    teams.forEach(function (team) {
+                        var teamsLastMove = null;
+                        $moves.append($("<h3>" + team.id + ": " + team.name + "</h3>"));
+                        moves.forEach(function (move) {
+                            if (team.id == move.team_id) {
+                                $moves.append("<div>" + move.move_date + "&emsp;" + displayMove(move) + "</div>");
+                                teamsLastMove = move;
+                            }
+                        });
+
+                        if (teamsLastMove != null) {
+                            var text = displayMove(teamsLastMove);
+                            if (team.role == 0) {
+                                $preformattedPlayers.text($preformattedPlayers.text() + text + " ");
+                            } else if(team.role == 1) {
+                                $preformattedChameleons.text($preformattedChameleons.text() + text + " ");
+                            }
+                        }
+                    });
+                });
+            }
+
+            function getTeamByPhone(phone) {
+                var foundTeam = null;
+                teams.forEach(function (team) {
+                    if (team.phone == phone) {
+                        foundTeam = team;
+                    }
+                });
+                return foundTeam;
+            }
+
+            function displayMove(move) {
+                var text = "#" + move.team_id + ":";
+                if (move.stop_from != null) {
+                    text += move.stop_from + "-";
+                }
+                if (move.stop_via != null) {
+                    text += move.stop_via + "-";
+                }
+                if (move.stop_to != null) {
+                    text += move.stop_to;
+                }
+                if (move.transport_type != null) {
+                    text += "[" + move.transport_type + "]";
+                }
+
+                return text;
+            }
+
+            function renderSms() {
+                $.ajax({
+                    type: "POST",
+                    url: "/chameleon/back/api.php?endpoint=sms",
+                    data: JSON.stringify({processed: 0, direction: 'in'}),
+                    contentType: "application/json",
+                    dataType: "json",
+                    success: function (data) {
+                        var messages = data;
+                        $sms.empty();
+                        messages.forEach(function (sms) {
+                            var $processLink = $("<a href='#'>process #" + sms.id + "</a>");
+                            $processLink.click(function () {
+                                $.getJSON("/chameleon/back/api.php?endpoint=sms&action=process&id=" + sms.id, function (data) {
+                                    $console.append(JSON.stringify(data));
+                                }).fail(function (xhr) {
+                                    $console.append(xhr.responseText);
+                                });
+                            });
+                            var teamName = sms.phone;
+                            if (sms.phone) {
+                                var team = getTeamByPhone(sms.phone);
+                                if (team) {
+                                    teamName = team.name;
+                                }
+                            }
+                            $sms.append($("<div>" + sms.id + ": " + teamName + " - "  + sms.text.toUpperCase() + "</div>"));
+                            $sms.append($processLink);
+                        });
+                    }});
+            }
+
+            function log(text) {
+                $console.prepend($("<div>" + text + "</div>"));
+            }
+
+            setInterval(function () {
+                renderMoves();
+                renderSms();
+            }, 1000);
+
+        });
+
+    </script>
+</head>
+<body>
+
+<button id="refresh">Refresh</button><br /><br />
+<b>Chameleons</b>: <div id="preformattedChameleons"></div>
+<b>Players</b>: <div id="preformattedPlayers"></div>
+<br />
+
+<div>
+<div id="moves"></div>
+<div id="sms"></div>
+</div>
+
+<div id="console"></div>
+
+</body>
+</html>

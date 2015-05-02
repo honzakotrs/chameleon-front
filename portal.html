@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Chameleoni GSM Portal</title>
+
+    <script src="js/jquery-2.1.3.min.js"></script>
+    <script type="application/javascript">
+
+        $(function () {
+
+            var $console = $("#console");
+            var $portalTeamRole = $("#portal-team-role");
+            var $portalTeams = $("#portal-teams");
+            var $portalType = $("#portal-type");
+
+            var teams = null;
+            $.getJSON("/chameleon/back/api.php?endpoint=team", function (data) {
+                teams = data;
+                $portalTeams.empty();
+                teams.forEach(function (team) {
+                    $portalTeams.append($("<option value='" + team.phone + "'>" + team.phone + " - " + team.name + "</option>"));
+                });
+            });
+
+            function log(text) {
+                $console.prepend($("<div>" + text + "</div>"));
+            }
+
+            function sendSingleSMS(phone, direction, text) {
+                $.get("/chameleon/back/portal.php", {direction: direction, text: text, phone: phone})
+                        .done(function (sms) {
+                            log(JSON.stringify(sms));
+                        })
+                        .fail(function (data) {
+                            alert("Failed to send SMS!");
+                        });
+            }
+
+            function sendBatchSMS(role, text) {
+                teams.forEach(function (team) {
+                    if (team.role == role) {
+                        sendSingleSMS(team.phone, 'out', text);
+                    }
+                });
+            }
+
+            $("#portal-send").click(function () {
+                var teamRole = $portalTeamRole.val();
+                var teamPhone = $portalTeams.val();
+                var phone = $("#portal-phone").val().trim();
+                var text = $("#portal-text").val();
+                var direction = $("#portal-direction").val();
+                var portalType = $portalType.val();
+
+                if (portalType == "custom") {
+                    if (phone.length == 9) {
+                        sendSingleSMS(phone, direction, text);
+                    } else {
+                        alert("Portal - wrong number!");
+                    }
+                } else if (portalType == "role") {
+                    sendBatchSMS(teamRole, text);
+                } else if (portalType == "team") {
+                    sendSingleSMS(teamPhone, "out", text);
+                }
+            });
+
+        });
+
+    </script>
+
+</head>
+<body>
+
+<h1>Chameleoni GSM Portal</h1>
+
+<div class="portal">
+    <select id="portal-direction">
+        <option value="out">OUT</option>
+        <option value="in">IN</option>
+    </select>
+    <select id="portal-type">
+        <option value="custom">Custom number</option>
+        <option value="role">Role</option>
+        <option value="team">Team</option>
+    </select>
+    <input type="text" id="portal-phone"/>
+    <select id="portal-team-role">
+        <option value="0">0 - Role:Player</option>
+        <option value="1">1 - Role:Chameleon</option>
+        <option value="99">99 - Role:Other</option>
+    </select>
+    <select id="portal-teams"></select>
+    <textarea id="portal-text"></textarea>
+    <button id="portal-send">SEND</button>
+</div>
+
+<div id="console"></div>
+
+</body>
+</html>
