@@ -19,6 +19,7 @@ var chameleonsColor = '#CCFC8E';
 var catchColor = '#31FFE4';
 var bonusStopIds = ["stop_17", "stop_8"];
 
+var localData = true;
 var playerIds = [1, 2, 3, 4, 5];
 var chameleonIds = [21, 22, 23, 24, 25, 26];
 var displayBinaryColors = true;
@@ -87,10 +88,10 @@ window.onload = function () {
     paper.setup('map-canvas');
 
     $.when(
-        $.getJSON("/chameleon/back/api.php?endpoint=team"),
-        $.getJSON("/chameleon/back/api.php?endpoint=move"),
-        $.getJSON("/chameleon/back/api.php?endpoint=game&id=" + gameId),
-        $.getJSON("/chameleon/back/api.php?endpoint=catch"))
+        $.getJSON(localData ? "json/teams.json" : "/chameleon/back/api.php?endpoint=team"),
+        $.getJSON(localData ? "json/moves.json" : "/chameleon/back/api.php?endpoint=move"),
+        $.getJSON(localData ? "json/game.json" : "/chameleon/back/api.php?endpoint=game&id=" + gameId),
+        $.getJSON(localData ? "json/catches.json" : "/chameleon/back/api.php?endpoint=catch"))
         .done(function (teamsResult, movesResult, gameResult, catchesResult) {
 
             game = gameResult[0];
